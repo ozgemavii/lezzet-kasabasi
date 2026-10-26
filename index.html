@@ -18,7 +18,7 @@
 /* Firebase köprüsü: uygulamanın beklediği claude.use("db" | "user" | "room") arayüzünü Firebase ile sağlar */
 (function(){
   if(typeof firebase==="undefined") return;
-  firebase.initializeApp({apiKey:"AIzaSyCakv2tvDgjbn2qaEuCGk48dfn42T9BJ2c",authDomain:"lezzet-kasabasi.firebaseapp.com",databaseURL:"https://lezzet-kasabasi-default-rtdb.europe-west1.firebasedatabase.app",projectId:"lezzet-kasabasi",storageBucket:"lezzet-kasabasi.firebasestorage.app",messagingSenderId:"1018461272487",appId:"1:1018461272487:web:c3adb4c65580fd3a5dde82"});
+  firebase.initializeApp({apiKey:"AIzaSyDRFTxRw8M619Dnm4G5VgowbJnXwBGpTxc",authDomain:"lezzet-kasabasi.firebaseapp.com",databaseURL:"https://lezzet-kasabasi-default-rtdb.europe-west1.firebasedatabase.app",projectId:"lezzet-kasabasi",storageBucket:"lezzet-kasabasi.firebasestorage.app",messagingSenderId:"1018461272487",appId:"1:1018461272487:web:c3adb4c65580fd3a5dde82"});
   const auth=firebase.auth(), rt=firebase.database(), TS=firebase.database.ServerValue.TIMESTAMP;
   const enc=k=>String(k).replace(/[.#$\[\]\/]/g,"_").slice(0,120);
   const ready=new Promise(res=>{ let done=false; auth.onAuthStateChanged(u=>{ if(u&&!done){ done=true; res(u); } }); auth.signInAnonymously().catch(e=>{ console.warn("Anonim giriş başarısız:",e&&e.code); if(!done){ done=true; res(null); } }); });
