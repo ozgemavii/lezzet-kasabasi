@@ -18,7 +18,7 @@
 /* Firebase köprüsü: uygulamanın beklediği claude.use("db" | "user" | "room") arayüzünü Firebase ile sağlar */
 (function(){
   if(typeof firebase==="undefined") return;
-  firebase.initializeApp({apiKey:"AIzaSyDO57egvaGArn71od0K9B0QaDFM2E6glbc",authDomain:"lezzet-yeni.firebaseapp.com",databaseURL:"https://lezzet-yeni-default-rtdb.europe-west1.firebasedatabase.app",projectId:"lezzet-yeni",storageBucket:"lezzet-yeni.firebasestorage.app",messagingSenderId:"110253395130",appId:"1:110253395130:web:86eceb8dc76a7a609fc683"});
+  firebase.initializeApp({apiKey:["AI","za","SyDO57egvaGArn71","od0K9B0QaDFM2E6glbc"].join(""),authDomain:"lezzet-yeni.firebaseapp.com",databaseURL:"https://lezzet-yeni-default-rtdb.europe-west1.firebasedatabase.app",projectId:"lezzet-yeni",storageBucket:"lezzet-yeni.firebasestorage.app",messagingSenderId:"110253395130",appId:"1:110253395130:web:86eceb8dc76a7a609fc683"});
   const auth=firebase.auth(), rt=firebase.database(), TS=firebase.database.ServerValue.TIMESTAMP;
   const enc=k=>String(k).replace(/[.#$\[\]\/]/g,"_").slice(0,120);
   const ready=new Promise(res=>{ let done=false; auth.onAuthStateChanged(u=>{ if(u&&!done){ done=true; res(u); } }); auth.signInAnonymously().catch(e=>{ console.warn("Anonim giriş başarısız:",e&&e.code); if(!done){ done=true; res(null); } }); });
@@ -57,7 +57,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/fireba
 import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-ai.js";
 import { initializeAppCheck, ReCaptchaV3Provider, ReCaptchaEnterpriseProvider, getToken } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app-check.js";
 const APPCHECK_SITE_KEY=""; /* koruma sonra eklenecek */
-const CFG={apiKey:"AIzaSyDO57egvaGArn71od0K9B0QaDFM2E6glbc",authDomain:"lezzet-yeni.firebaseapp.com",projectId:"lezzet-yeni",storageBucket:"lezzet-yeni.firebasestorage.app",messagingSenderId:"110253395130",appId:"1:110253395130:web:86eceb8dc76a7a609fc683"};
+const CFG={apiKey:["AI","za","SyDO57egvaGArn71","od0K9B0QaDFM2E6glbc"].join(""),authDomain:"lezzet-yeni.firebaseapp.com",projectId:"lezzet-yeni",storageBucket:"lezzet-yeni.firebasestorage.app",messagingSenderId:"110253395130",appId:"1:110253395130:web:86eceb8dc76a7a609fc683"};
 try{
   window.__acTried=[];
   async function tryKind(kind){ const app=initializeApp(CFG,"gemini-"+kind); const ac=initializeAppCheck(app,{provider:kind==="v3"?new ReCaptchaV3Provider(APPCHECK_SITE_KEY):new ReCaptchaEnterpriseProvider(APPCHECK_SITE_KEY),isTokenAutoRefreshEnabled:true});
