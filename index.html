@@ -18,7 +18,7 @@
 /* Firebase köprüsü: uygulamanın beklediği claude.use("db" | "user" | "room") arayüzünü Firebase ile sağlar */
 (function(){
   if(typeof firebase==="undefined") return;
-  firebase.initializeApp({apiKey:"AIzaSyDRFTxRw8M619Dnm4G5VgowbJnXwBGpTxc",authDomain:"lezzet-kasabasi.firebaseapp.com",databaseURL:"https://lezzet-kasabasi-default-rtdb.europe-west1.firebasedatabase.app",projectId:"lezzet-kasabasi",storageBucket:"lezzet-kasabasi.firebasestorage.app",messagingSenderId:"1018461272487",appId:"1:1018461272487:web:c3adb4c65580fd3a5dde82"});
+  firebase.initializeApp({apiKey:"AIzaSyDO57egvaGArn71od0K9B0QaDFM2E6glbc",authDomain:"lezzet-yeni.firebaseapp.com",databaseURL:"https://lezzet-yeni-default-rtdb.europe-west1.firebasedatabase.app",projectId:"lezzet-yeni",storageBucket:"lezzet-yeni.firebasestorage.app",messagingSenderId:"110253395130",appId:"1:110253395130:web:86eceb8dc76a7a609fc683"});
   const auth=firebase.auth(), rt=firebase.database(), TS=firebase.database.ServerValue.TIMESTAMP;
   const enc=k=>String(k).replace(/[.#$\[\]\/]/g,"_").slice(0,120);
   const ready=new Promise(res=>{ let done=false; auth.onAuthStateChanged(u=>{ if(u&&!done){ done=true; res(u); } }); auth.signInAnonymously().catch(e=>{ console.warn("Anonim giriş başarısız:",e&&e.code); if(!done){ done=true; res(null); } }); });
@@ -56,13 +56,13 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
 import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-ai.js";
 import { initializeAppCheck, ReCaptchaV3Provider, ReCaptchaEnterpriseProvider, getToken } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app-check.js";
-const APPCHECK_SITE_KEY="6LefXgEuAAAAAB5biR5-BoBtW8P6Y5IMdEFSpuq7";
-const CFG={apiKey:"AIzaSyCakv2tvDgjbn2qaEuCGk48dfn42T9BJ2c",authDomain:"lezzet-kasabasi.firebaseapp.com",projectId:"lezzet-kasabasi",storageBucket:"lezzet-kasabasi.firebasestorage.app",messagingSenderId:"1018461272487",appId:"1:1018461272487:web:c3adb4c65580fd3a5dde82"};
+const APPCHECK_SITE_KEY=""; /* koruma sonra eklenecek */
+const CFG={apiKey:"AIzaSyDO57egvaGArn71od0K9B0QaDFM2E6glbc",authDomain:"lezzet-yeni.firebaseapp.com",projectId:"lezzet-yeni",storageBucket:"lezzet-yeni.firebasestorage.app",messagingSenderId:"110253395130",appId:"1:110253395130:web:86eceb8dc76a7a609fc683"};
 try{
   window.__acTried=[];
   async function tryKind(kind){ const app=initializeApp(CFG,"gemini-"+kind); const ac=initializeAppCheck(app,{provider:kind==="v3"?new ReCaptchaV3Provider(APPCHECK_SITE_KEY):new ReCaptchaEnterpriseProvider(APPCHECK_SITE_KEY),isTokenAutoRefreshEnabled:true});
     try{ const t=await getToken(ac,false); if(t&&t.token){ window.__acTried.push(kind+": ✓"); return {app,ac,kind}; } }catch(e){ window.__acTried.push(kind+": "+String(e&&e.message||e).slice(0,140)); } return null; }
-  let pick=await tryKind("v3"); if(!pick) pick=await tryKind("enterprise");
+  let pick=APPCHECK_SITE_KEY?await tryKind("v3"):null; if(!pick&&APPCHECK_SITE_KEY) pick=await tryKind("enterprise");
   if(!pick){ const app=initializeApp(CFG,"gemini-plain"); pick={app,kind:"yok"}; }
   window.__acKind=pick.kind; window.__appCheck=pick.ac||null;
   const ai=getAI(pick.app,{backend:new GoogleAIBackend()});
