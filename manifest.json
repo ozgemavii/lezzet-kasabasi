@@ -1,6 +1,14 @@
 {
+ "id": "/lezzet-kasabasi/",
  "name": "Lezzet Kasabası",
  "short_name": "Lezzet Kasabası",
+ "description": "Yemeğinin fotoğrafını çek, kalorini öğren; sağlıklı alışkanlıklarla kendi şirin kasabanı büyüt. Kalori takibi, su takibi, tarifler ve arkadaşlarınla oynayabileceğin 3D bir dünya.",
+ "categories": [
+  "health",
+  "lifestyle",
+  "food"
+ ],
+ "dir": "ltr",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",
