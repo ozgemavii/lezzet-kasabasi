@@ -6238,7 +6238,7 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
       av.add(model);
       const m={model,mixer,acts,cur:null,curK:"",last:performance.now(),lx:av.position.x,lz:av.position.z,spd:0,s};
       av.userData.mt=m; try{ setupFace(model,m); }catch(e){ m.faceErr=String(e&&e.message||e); } try{ attachHair(model,m); }catch(e){ m.hairWhy=String(e&&e.message||e).slice(0,50); } play(m,"idle",0);
-      const fs=CFG.face?(" · göz: "+(m.face?m.face.lids.length+"/2":"yok")+(m.faceErr?" · hata: "+m.faceErr.slice(0,60):"")+(m.faceWhy?" · "+m.faceWhy:"")):""; const hs=CFG.hair?(" · saç: "+(m.hair?"✓":(MT.hairErr||m.hairWhy||"yok"))):""; badge("🧪 Model testi: aktif"+fs+hs+" · v5");
+      const fs=CFG.face?(" · göz: "+(m.face?m.face.lids.length+"/2":"yok")+(m.faceErr?" · hata: "+m.faceErr.slice(0,60):"")+(m.faceWhy?" · "+m.faceWhy:"")):""; const hs=CFG.hair?(" · saç: "+(m.hair?"✓":(MT.hairErr||m.hairWhy||"yok"))):""; badge("🧪 Model testi: aktif"+fs+hs+" · v6");
       if(m.face&&/[?&]blinkdebug=1/.test(location.search)){ m.face.debug=true; m.face.lids.forEach(L=>{ drawLid(L.cv,0.7,{skin:"#ff2bd6",lash:"#1a00ff"}); L.tex.needsUpdate=true; L.lid.visible=true; L.f=-1; }); }
       const R=T3.room; if(R&&R.userData&&R.userData.anim) R.userData.anim.push(()=>tick(av));
     }catch(e){ MT.state="failed"; MT.err=String(e&&e.message||e); restore(av); badge("🧪 Model eklenemedi; eski karakter kullanılıyor"); } }
