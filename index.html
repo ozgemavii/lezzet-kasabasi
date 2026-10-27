@@ -66,10 +66,10 @@ try{
   if(!pick){ const app=initializeApp(CFG,"gemini-plain"); pick={app,kind:"yok"}; }
   window.__acKind=pick.kind; window.__appCheck=pick.ac||null;
   const ai=getAI(pick.app,{backend:new GoogleAIBackend()});
-  const MODELS=["gemini-2.5-flash","gemini-flash-latest","gemini-2.5-flash-lite","gemini-2.0-flash"]; let mi=0;
+  const MODELS=["gemini-3.5-flash","gemini-3.8-flash","gemini-3.5-flash-lite","gemini-3.1-flash-lite"]; let mi=0; window.__geminiErrs=[];
   const toPart=im=>{ if(!im) return null; if(typeof im==="string"){ const m=/^data:([^;]+);base64,(.+)$/.exec(im); return m?{inlineData:{mimeType:m[1],data:m[2]}}:null; } const d=im.data||(im.source&&im.source.data), t=im.mediaType||im.media_type||(im.source&&im.source.media_type)||"image/jpeg"; return d?{inlineData:{mimeType:t,data:String(d).replace(/^data:[^,]+,/,"")}}:null; };
   const parseJSON=t=>{ t=String(t||"").replace(/```json|```/g,"").trim(); try{ return JSON.parse(t); }catch(e){ const a=t.indexOf("{"), b=t.lastIndexOf("}"); if(a>=0&&b>a) return JSON.parse(t.slice(a,b+1)); const c=t.indexOf("["), d=t.lastIndexOf("]"); if(c>=0&&d>c) return JSON.parse(t.slice(c,d+1)); throw Object.assign(new SyntaxError("json"),{code:"invalid_json"}); } };
-  async function run(parts){ let lastErr; for(let k=mi;k<MODELS.length;k++){ try{ window.__geminiModel=MODELS[k]; const model=getGenerativeModel(ai,{model:MODELS[k],generationConfig:{responseMimeType:"application/json",temperature:0.4}}); const r=await model.generateContent(parts); mi=k; return r.response.text(); }catch(e){ lastErr=e; const msg=String(e&&e.message||e); window.__geminiLastErr=MODELS[k]+": "+msg; if(/429|quota|RESOURCE_EXHAUSTED/i.test(msg)) throw Object.assign(new Error("rate"),{code:"rate_limited"}); if(/App Check|appCheck|401|403/i.test(msg)) throw Object.assign(new Error("denied"),{code:"not_granted",detail:msg}); if(!/404|not found|NOT_FOUND|not supported/i.test(msg)) throw e; } } throw lastErr; }
+  async function run(parts){ let lastErr; for(let k=mi;k<MODELS.length;k++){ try{ window.__geminiModel=MODELS[k]; const model=getGenerativeModel(ai,{model:MODELS[k],generationConfig:{responseMimeType:"application/json",temperature:0.4}}); const r=await model.generateContent(parts); mi=k; return r.response.text(); }catch(e){ lastErr=e; const msg=String(e&&e.message||e); window.__geminiLastErr=MODELS[k]+": "+msg; window.__geminiErrs.push(MODELS[k]+" → "+msg.replace(/https?:\/\/\S+/g,"").slice(0,160)); if(/App Check token/i.test(msg)) throw Object.assign(new Error("denied"),{code:"not_granted",detail:msg}); if(/429|RESOURCE_EXHAUSTED/i.test(msg)&&k===MODELS.length-1) throw Object.assign(new Error("rate"),{code:"rate_limited"}); } } throw lastErr; }
   window.__gemini={ async limits(){ return {images:true}; },
     async json(prompt,opt={}){ const parts=[{text:String(prompt)+"\n\nYanıtı YALNIZCA geçerli JSON olarak ver; açıklama ya da kod bloğu ekleme."}]; (opt.images||[]).forEach(im=>{ const p=toPart(im); if(p) parts.push(p); }); if(opt.signal&&opt.signal.aborted) throw Object.assign(new Error("cancel"),{code:"cancelled"}); return parseJSON(await run(parts)); } };
   window.dispatchEvent(new Event("gemini-ready"));
@@ -85,7 +85,7 @@ if(/aitest=1/.test(location.search)) window.addEventListener("load",()=>setTimeo
   out(true,"Gemini kodu yüklendi");
   out(window.__acKind&&window.__acKind!=="yok", "App Check yöntemi: "+(window.__acKind==="v3"?"reCAPTCHA v3 ✓":window.__acKind==="enterprise"?"reCAPTCHA Enterprise ✓":"çalışmadı")+" · denemeler: "+(window.__acTried||[]).join(" | "));
   try{ const r=await window.__gemini.json('Şu JSON\'u aynen döndür: {"merhaba":"dünya"}'); out(true,"Gemini cevap verdi ("+(window.__geminiModel||"?")+"): "+JSON.stringify(r)); }
-  catch(e){ out(false,"Gemini hatası: "+String(e&&e.message||e)+(e&&e.detail?" | "+e.detail:"")+(window.__geminiLastErr?" | son deneme: "+window.__geminiLastErr:"")); }
+  catch(e){ out(false,"Gemini hatası. Denenen modeller: "+(window.__geminiErrs||[]).join(" ‖ ")); }
 },800));
 </script>
 
@@ -515,6 +515,35 @@ body{ background:var(--bg); }
 .to-card{ border:2px solid transparent; background:#fff; border-radius:18px; padding:6px 4px 8px; display:flex; flex-direction:column; align-items:center; gap:2px; font:inherit; color:#3B3436; box-shadow:0 2px 10px rgba(0,0,0,.06); } .to-card.sel{ border-color:#9E6B76; } .to-th svg{ width:70px; height:auto; } .to-card small{ font-size:.66rem; font-weight:800; text-align:center; line-height:1.15; } .to-card em{ font-style:normal; font-size:.66rem; color:#9E6B76; font-weight:900; }
 @media (orientation:landscape) and (max-height:520px){ .tryon{ flex-direction:row; flex-wrap:wrap; } .to-mirror{ width:40%; } .to-grid{ grid-template-columns:repeat(4,1fr); } }
 .tryon > *, .studio > *{ flex-shrink:0; } .to-cats{ padding:2px 0 4px; }
+
+/* sade karakter ekranı */
+.lk-tabs{ display:flex; gap:6px; overflow-x:auto; margin:10px 0 6px; padding-bottom:4px; } .lk-tabs .chip{ flex:0 0 auto; }
+.lk-body{ background:rgba(255,255,255,.92); color:var(--ink); border-radius:20px; padding:10px 12px 12px; } .lk-body .q{ margin-top:6px; }
+.lk-hair{ display:grid !important; grid-template-columns:repeat(4,1fr); gap:6px; } .lk-hair .emo{ border-radius:14px; }
+#cc .pop{ position:sticky; top:0; z-index:3; background:inherit; padding:4px 0; }
+.chip[data-resize]{ display:none !important; } [data-hub="gems"]{ display:none !important; }
+/* tanışma sihirbazı */
+.ob-wiz{ min-height:80vh; } .ob-page h1{ color:#fff; margin:14px 0 4px; } .ob-page p{ opacity:.92; margin:0 0 12px; } .ob-page input{ font-size:1.15rem; padding:14px; border-radius:16px; }
+.ob-dots{ display:flex; gap:6px; justify-content:center; margin-bottom:8px; } .ob-dots i{ width:28px; height:6px; border-radius:6px; background:rgba(255,255,255,.3); } .ob-dots i.on{ background:#fff; }
+.ob-cards{ display:grid; gap:10px; } .ob-cards.two{ grid-template-columns:1fr 1fr; }
+.ob-card{ background:rgba(255,255,255,.95); color:var(--ink); border:3px solid transparent; border-radius:20px; padding:14px; font:inherit; font-weight:800; text-align:left; }
+.ob-card.big{ text-align:center; font-size:1.1rem; padding:22px 10px; } .ob-card.big br+*{ display:block; } .ob-card[aria-pressed="true"]{ border-color:#FFD166; box-shadow:0 0 0 3px rgba(255,209,102,.4); }
+.ob-nums{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; } .ob-nums label{ color:#fff; font-weight:800; font-size:.85rem; } .ob-nums input{ width:100%; margin-top:4px; text-align:center; }
+.ob-bmi{ margin-top:12px; background:#fff; color:var(--ink); border-radius:18px; padding:12px; border-left:8px solid; display:flex; gap:12px; align-items:center; }
+.ob-nav{ display:flex; gap:8px; margin-top:16px; } .ob-nav .btn{ flex:1; }
+/* dünya: açılır mesaj kutusu, yatay ekran */
+.chatbar.closed{ display:none !important; } .chattog{ position:absolute; left:12px; bottom:calc(150px + env(safe-area-inset-bottom,0px)); z-index:6; }
+@media (orientation:landscape) and (max-height:520px){ .world .wbtn{ width:40px !important; height:40px !important; font-size:1rem !important; } .chattog{ bottom:calc(120px + env(safe-area-inset-bottom,0px)); } .world .joy{ transform:scale(.8); transform-origin:left bottom; } }
+
+/* okunabilirlik: beyaz kutularda koyu yazı (karanlık modda da) */
+.ob-card, .ob-card *{ color:#3B3436 !important; } .ob-bmi, .ob-bmi span{ color:#3B3436; }
+.lk-body, .lk-body .q, .lk-body small{ color:#3B3436 !important; }
+.lk-body .chip{ background:#EFE8F1 !important; color:#3B3436 !important; border-color:transparent !important; } .lk-body .chip[aria-pressed="true"]{ background:#9E6B76 !important; color:#fff !important; }
+.lk-body .emo[aria-pressed="true"]{ outline:3px solid #9E6B76; outline-offset:2px; }
+.lk-tabs .chip[aria-pressed="true"]{ background:#fff !important; color:#3B3436 !important; }
+#toEvim{ display:none !important; }
+.lk-body .emo:not(.lk-pick){ background-color:#F4EEF5; } .lk-body .lk-hair .emo{ background:#F4EEF5 !important; }
+#obNext, #ccNext{ color:#7A4E5A !important; font-weight:900; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -5979,6 +6008,157 @@ const _buildTownEmpty=t3BuildTown; t3BuildTown=function(){ const g=_buildTownEmp
   g.children.filter(o=>o.userData&&o.userData.h&&Object.entries(LOTS).some(([id,LL])=>LL.type==="empty"&&id!==myLot()&&Math.abs(o.position.x-LL.x)<1&&Math.abs(o.position.z-(LL.z+LL.d/2-3.25-1.6))<2)).forEach(o=>g.remove(o));
   if(L&&L.type==="empty"&&d&&!bState().pieces.length){ [d.house,d.shell].forEach(o=>o&&g.remove(o)); g.userData.furn.filter(f=>f.userData.homeItem).forEach(f=>g.remove(f)); g.userData.furn=g.userData.furn.filter(f=>!f.userData.homeItem); g.userData.colliders=g.userData.colliders.filter(c=>!(c.hx!=null&&Math.abs(c.x-d.cx)<d.W/2+0.4&&Math.abs(c.z-d.cz)<d.D/2+0.4)); g.userData.spots=g.userData.spots.filter(s=>!(Math.abs(s.x-d.cx)<d.W/2&&Math.abs(s.z-d.cz)<d.D/2)); g.userData.dollhouse=null; T3.myShell=null; setTimeout(()=>toast("🔨 Boş arsandasın: inşa moduyla evini kendin yap"),1500); }
   return g; };
+/* ===================== YENİDEN DÜZEN: tanışma sihirbazı · sade karakter ekranı · her şey ücretsiz · su · dünya iyileştirmeleri ===================== */
+/* ---- her şey ücretsiz, abonelik yok ---- */
+try{ if(state){ state.subscribed=true; } }catch(e){}
+SCREENS.paywall=()=>go("today");
+ITEMS.forEach(i=>{ if(i.gem){ i.price=i.gem*25; delete i.gem; } });
+Object.values(CARS).forEach(c=>{ if(c.cur==="gem"){ c.cur="lp"; c.price=c.price*25; } });
+Object.values(HSTY).forEach(h=>{ h.tier="free"; });
+hairOwned=function(k){ return !!HSTY[k]; };
+HSTY.hijab={n:"Başörtüsü",g:"f",tier:"free"};
+/* ---- doğal saç renkleri ---- */
+HAIRCOLS.splice(0,HAIRCOLS.length,"#1A1414","#2B1B17","#3D2A20","#4A3021","#5A3825","#6E4630","#7B4A2D","#8E5A3A","#A0693F","#B5814F","#C9A06A","#D8B985","#E6CFA3","#7A2E2A","#8E3B2E","#9A9A9A","#C9C9C9");
+const HIJABCOLS=["#F4EFEA","#E8DDF3","#F2D3DC","#D7EBD8","#D6E4F5","#E9D8BE","#C9B8A6","#8C7B6B","#3B3436","#1E2A4A","#7A2E4A","#B5544E","#4E6E3A","#9E6B76"];
+/* ---- sadece anime, kadında sakal yok ---- */
+const _fixCharR=fixChar; fixChar=function(c){ const r=_fixCharR(c); if(r){ r.style="anime"; if(r.g!=="m") r.beard="none"; } return r; };
+const _defCharR=defaultChar; defaultChar=function(g){ const c=_defCharR(g); c.style="anime"; return c; };
+try{ if(state&&state.char){ state.char.style="anime"; if(state.char.g!=="m") state.char.beard="none"; } }catch(e){}
+const _avaSVGR=avatarSVG; avatarSVG=function(size,o={}){ const c=o.char||state.char; if(c&&(c.style!=="anime"||c.hair==="hijab")){ const cc={...c,style:"anime"}; if(cc.hair==="hijab"){ const svg=_avaSVGR(size,{...o,char:{...cc,hair:"buzz",beard:"none"}}); return hijabOverlay(svg,cc.hairCol,o); } o={...o,char:cc}; } return _avaSVGR(size,o); };
+function hijabOverlay(svg,col,o){ if(!/^#[0-9a-f]{6}$/i.test(String(col))) col="#E8DDF3"; const sh=shade(col,-22); const hood=`<g class="hijab"><path fill-rule="evenodd" fill="${col}" stroke="${sh}" stroke-width="1.2" d="M100 34 C 62 34 44 62 46 98 C 47 122 52 138 40 162 C 70 176 130 176 160 162 C 148 138 153 122 154 98 C 156 62 138 34 100 34 Z M100 58 C 78 58 66 76 66 98 C 66 120 80 136 100 136 C 120 136 134 120 134 98 C 134 76 122 58 100 58 Z"/><path d="M66 92 C 70 70 86 60 100 60 C 114 60 130 70 134 92" fill="none" stroke="${sh}" stroke-width="2" opacity=".55"/></g>`;
+  return svg.replace(/<\/svg>\s*$/,hood+"</svg>"); }
+/* 3D başörtüsü */
+const _t3HairR=t3Hair; t3Hair=function(head,key,m,F){ if(key!=="hijab") return _t3HairR(head,key,m,F);
+  const add=(g,x=0,y=0,z=0,rx=0)=>{ const o=t3Mesh(g,m,x,y,z); o.rotation.x=rx; head.add(o); return o; };
+  add(new THREE.SphereGeometry(0.29,40,24,Math.PI/2+0.95,Math.PI*2-1.9,0,Math.PI*0.8),0,0.01,-0.01);
+  add(new THREE.SphereGeometry(0.295,40,12,0,Math.PI*2,0,Math.PI*0.42),0,0.012,-0.012);
+  const dr=add(new THREE.CylinderGeometry(0.2,0.34,0.36,36,1,true),0,-0.3,-0.02); dr.material=m; return; };
+/* ---- sade, sekmeli karakter ekranı ---- */
+let LTAB="ten";
+lookHTML=function(c,scope){ const F=c.g!=="m";
+  const tabs=[["ten","🎨 Ten"],["yuz","🙂 Yüz"],["goz","👀 Gözler"],["sac",F?"💇 Saç / Başörtüsü":"💇 Saç"],...(F?[]:[["sakal","🧔 Sakal"]]),["dudak","💄 Dudak"]];
+  if(!tabs.some(t=>t[0]===LTAB)) LTAB="ten";
+  const sw=(arr,key)=>`<div class="chips lk-sw">${arr.map(v=>`<button class="emo" data-set="${key}" data-v="${v}" aria-label="${key} rengi" aria-pressed="${c[key]===v}" style="width:40px;height:40px;background:${v};border-width:3px"></button>`).join("")}${key==="hairCol"||key==="eye"?`<label class="emo lk-pick" title="İstediğin renk" style="width:40px;height:40px;display:grid;place-items:center;cursor:pointer;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);border-width:3px;position:relative"><input type="color" data-color="${key}" value="${/^#[0-9a-f]{6}$/i.test(c[key])?c[key]:"#8E5A3A"}" aria-label="İstediğin rengi seç" style="opacity:0;position:absolute;inset:0;width:100%;height:100%"></label>`:""}</div>`;
+  const opt=(arr,key)=>`<div class="chips">${arr.map(([v,n])=>`<button class="chip" data-set="${key}" data-v="${v}" aria-pressed="${c[key]===v}">${n}</button>`).join("")}</div>`;
+  let body="";
+  if(LTAB==="ten") body=`<div class="q">Ten rengi</div>${sw(SKINS,"skin")}<div class="q">Çiller</div><div class="chips"><button class="chip" data-set="freckles" data-v="0" aria-pressed="${!c.freckles}">Yok</button><button class="chip" data-set="freckles" data-v="1" aria-pressed="${!!c.freckles}">Var</button></div>`;
+  else if(LTAB==="yuz") body=`<div class="q">Yüz şekli</div>${opt(FACES,"face")}<div class="q">Kaşlar</div>${opt(BROWS,"brow")}`;
+  else if(LTAB==="goz") body=`<div class="q">Göz şekli</div>${opt(EYESTY,"eyeStyle")}<div class="q">Göz rengi</div>${sw(EYECOLS,"eye")}`;
+  else if(LTAB==="sac"){ const list=Object.entries(HSTY).filter(([k,h])=>h.g===c.g);
+    body=`<div class="q">${F?"Saç modeli ya da başörtüsü":"Saç modeli"}</div><div class="chips lk-hair">${list.map(([k,h])=>`<button class="emo" data-set="hair" data-v="${k}" aria-pressed="${c.hair===k}" aria-label="${h.n}" style="padding:2px;width:auto;height:auto"><span style="display:block">${avatarSVG(56,{crop:"bust",char:{...c,hair:k,hairCol:k==="hijab"?(HIJABCOLS.includes(c.hairCol)?c.hairCol:HIJABCOLS[1]):(HAIRCOLS.includes(c.hairCol)?c.hairCol:HAIRCOLS[3])},ids:["tee_white"],mood:"keyifli",still:true})}</span><small style="display:block;font-size:.62rem;font-weight:800">${h.n}</small></button>`).join("")}</div>
+      <div class="q">${c.hair==="hijab"?"Başörtüsü rengi":"Saç rengi"}</div>${sw(c.hair==="hijab"?HIJABCOLS:HAIRCOLS,"hairCol")}`; }
+  else if(LTAB==="sakal") body=`<div class="q">Sakal</div>${opt(BEARDS,"beard")}`;
+  else if(LTAB==="dudak") body=`<div class="q">Dudak rengi</div>${opt(LIPS.map(l=>[l[0],l[1]]),"lip")}`;
+  return `<div class="lk"><div class="seg" role="group" aria-label="Cinsiyet"><button class="segb" data-set="g" data-v="f" aria-pressed="${c.g!=="m"}">👩 Kadın</button><button class="segb" data-set="g" data-v="m" aria-pressed="${c.g==="m"}">👨 Erkek</button></div>
+    <div class="lk-tabs" role="tablist">${tabs.map(([k,n])=>`<button class="chip" role="tab" data-ltab="${k}" aria-selected="${LTAB===k}" aria-pressed="${LTAB===k}">${n}</button>`).join("")}</div><div class="lk-body">${body}</div></div>`; };
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-ltab]"); if(!b) return; e.stopPropagation(); LTAB=b.dataset.ltab; go(curScreen); },true);
+const _applyLookR=applyLook; applyLook=function(c,b){ const r=_applyLookR(c,b); if(b.dataset.set==="g"){ if(c.g!=="m") c.beard="none"; if(c.hair==="hijab"&&c.g==="m") c.hair="messy"; }
+  if(b.dataset.set==="hair"){ const toH=b.dataset.v==="hijab", wasCol=String(c.hairCol); if(toH&&!HIJABCOLS.includes(wasCol)) c.hairCol=HIJABCOLS[1]; if(!toH&&!HAIRCOLS.includes(wasCol)) c.hairCol=HAIRCOLS[3]; } return r; };
+/* ---- tanışma sihirbazı: sayfa sayfa ---- */
+let obStep=0, obD=null, obWelcome=false;
+const _avScrR=SCREENS.avatar; SCREENS.avatar=()=>{ if(obWelcome&&state.char){ obWelcome=false; return go("welcome"); } return _avScrR(); };
+const _onbR=SCREENS.onboard;
+SCREENS.onboard=()=>{ if(slideIdx<SLIDES.length) return _onbR();
+  if(state.profile&&state.char) return go("welcome");
+  if(state.profile&&!state.char) return go("createChar");
+  obD=obD||{nick:"",sex:"",age:"",h:"",w:"",goal:"",act:"",diet:"all",allergies:""};
+  const N=6, bmi=()=>{ const h=+obD.h, w=+obD.w; if(!(h>=120&&h<=230&&w>=35&&w<=300)) return ""; const v=w/((h/100)**2), cat=v<18.5?["Zayıf","#5FA8D3"]:v<25?["Normal","#13B98C"]:v<30?["Fazla kilolu","#E8A33D"]:["Obez","#E0603C"]; return `<div class="ob-bmi" style="border-color:${cat[1]}"><b style="font-size:1.6rem">${v.toFixed(1)}</b><span>Vücut kitle indeksin · <b style="color:${cat[1]}">${cat[0]}</b></span></div>`; };
+  const cards=(obj,key,lab)=>`<div class="ob-cards">${Object.entries(obj).map(([k,v])=>`<button class="ob-card" data-pick="${key}" data-v="${k}" aria-pressed="${obD[key]===k}">${lab?lab(v):v}</button>`).join("")}</div>`;
+  const pages=[
+    ()=>`<h1>Merhaba! 👋</h1><p>Sana nasıl seslenelim?</p><input id="obNick" maxlength="24" value="${esc(obD.nick)}" placeholder="Takma adın" autocomplete="nickname">`,
+    ()=>`<h1>Cinsiyetin?</h1><p>Kalori hesabın için gerekli.</p><div class="ob-cards two"><button class="ob-card big" data-pick="sex" data-v="f" aria-pressed="${obD.sex==="f"}">👩<br>Kadın</button><button class="ob-card big" data-pick="sex" data-v="m" aria-pressed="${obD.sex==="m"}">👨<br>Erkek</button></div>`,
+    ()=>`<h1>Biraz seni tanıyalım</h1><div class="ob-nums"><label>Yaş<input id="obAge" type="number" inputmode="numeric" value="${obD.age}"></label><label>Boy (cm)<input id="obH" type="number" inputmode="numeric" value="${obD.h}"></label><label>Kilo (kg)<input id="obW" type="number" inputmode="decimal" value="${obD.w}"></label></div><div id="obBmi">${bmi()}</div>`,
+    ()=>`<h1>Hedefin ne?</h1>${cards(GOALS,"goal")}`,
+    ()=>`<h1>Günün ne kadar hareketli?</h1>${cards(ACT,"act",v=>v[1])}`,
+    ()=>`<h1>Beslenme tercihin</h1>${cards(DIETS,"diet")}<label class="small" style="display:block;margin-top:10px">Alerjin ya da sevmediklerin (isteğe bağlı)<input id="obAlg" value="${esc(obD.allergies)}" placeholder="ör. fıstık, mantar"></label>`];
+  app.innerHTML=`<section class="game ob-wiz" id="obz"><div class="floaters" aria-hidden="true"><span>🥑</span><span>🍓</span><span>⭐</span><span>🥕</span><span>💧</span><span>🍋</span></div>
+    <div style="position:relative;z-index:1"><div class="ob-dots">${Array.from({length:N},(_,i)=>`<i class="${i<=obStep?"on":""}"></i>`).join("")}</div><span class="badge" style="background:rgba(255,255,255,.22);color:#fff">Seni tanıyalım · ${obStep+1}/${N}</span>
+    <div class="ob-page pop">${pages[obStep]()}</div><p class="err" id="obErr" role="alert"></p>
+    <div class="ob-nav">${obStep>0?`<button class="btn ghost" id="obBack">‹ Geri</button>`:""}<button class="btn" id="obNext" style="background:#fff;color:var(--blue)">${obStep===N-1?"Bitir ✓":"Devam ➜"}</button></div></div></section>`;
+  const err=t=>{ $("#obErr").textContent=t; };
+  const grab=()=>{ if($("#obNick")) obD.nick=$("#obNick").value.trim(); if($("#obAge")){ obD.age=$("#obAge").value; obD.h=$("#obH").value; obD.w=$("#obW").value; } if($("#obAlg")) obD.allergies=$("#obAlg").value.trim(); };
+  ["#obAge","#obH","#obW"].forEach(s=>{ const el=$(s); if(el) el.oninput=()=>{ grab(); $("#obBmi").innerHTML=bmi(); }; });
+  const ok=()=>{ grab(); if(obStep===0&&!obD.nick) return err("Bir takma ad yaz."), false; if(obStep===1&&!obD.sex) return err("Birini seç."), false;
+    if(obStep===2){ const a=+obD.age,h=+obD.h,w=+obD.w; if(!a||!h||!w) return err("Yaş, boy ve kiloyu yaz."), false; if(a<18) return err("Bu uygulama 18 yaş ve üzeri içindir."), false; if(h<120||h>230||w<35||w>300) return err("Boy ve kiloyu kontrol et."), false; }
+    if(obStep===3&&!obD.goal) return err("Bir hedef seç."), false; if(obStep===4&&!obD.act) return err("Birini seç."), false; return true; };
+  const finish=()=>{ const p=state.profile||{}; const np={...p,nick:obD.nick||"Misafir",emoji:p.emoji||"🙂",sex:obD.sex,age:+obD.age,h:+obD.h,w:+obD.w,goal:obD.goal,act:obD.act,diet:obD.diet||"all",allergies:obD.allergies};
+    state.weights.push({t:Date.now(),w:np.w}); state.profile=np; state.subscribed=true; save(); try{ syncMyPostsMeta(); }catch(e){} obD=null; obStep=0; confetti();
+    if(!state.char){ draftChar=defaultChar(np.sex==="m"?"m":"f"); obWelcome=true; go("createChar"); } else go("welcome"); };
+  $("#obz").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+    if(b.dataset.pick){ obD[b.dataset.pick]=b.dataset.v; if(b.dataset.pick!=="diet"){ grab(); if(obStep<N-1){ obStep++; } go("onboard"); } else go("onboard"); return; }
+    if(b.id==="obBack"){ grab(); obStep=Math.max(0,obStep-1); go("onboard"); return; }
+    if(b.id==="obNext"){ if(!ok()) return; if(obStep===N-1) return finish(); obStep++; go("onboard"); } });
+  const inp=app.querySelector(".ob-page input"); if(inp&&obStep!==2) setTimeout(()=>{ try{ inp.focus(); }catch(e){} },150); };
+/* ---- su: kendi hedefin ---- */
+setWater=function(n){ state.waterLog[dayKey(Date.now())]=Math.max(0,Math.min(99,n)); save(); };
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("#wGoalP,#wGoalM"); if(!b) return; e.stopPropagation(); e.preventDefault(); state.waterGoal=Math.max(1,Math.min(40,(state.waterGoal||8)+(b.id==="wGoalP"?1:-1))); save(); go(curScreen); },true);
+/* ---- dünya: kamera, mesaj kutusu, içerisi, araba ---- */
+const _hydR=t3Hydrate; t3Hydrate=function(...a){ const r=_hydR.apply(this,a); try{ if(T3.ctl&&T3.room&&T3.room.userData.town){ T3.ctl.minPolarAngle=Math.PI*0.04; T3.ctl.maxPolarAngle=Math.PI*0.62; }
+  const send=document.getElementById("rmSend"); if(send&&!document.getElementById("chatTog")){ const bar=send.parentElement; bar.classList.add("chatbar"); if(!sessionStorage.getItem("apcChatOpen")) bar.classList.add("closed"); const t=document.createElement("button"); t.id="chatTog"; t.className="wbtn chattog"; t.setAttribute("aria-label","Mesaj yaz"); t.textContent="💬"; t.onclick=()=>{ const c=bar.classList.toggle("closed"); try{ c?sessionStorage.removeItem("apcChatOpen"):sessionStorage.setItem("apcChatOpen","1"); }catch(e){} if(!c){ const i=bar.querySelector("input"); i&&i.focus(); } }; bar.parentElement.insertBefore(t,bar); } }catch(e){} return r; };
+const _btR=t3BuildTown; t3BuildTown=function(){ const g=_btR(); const d=g.userData.dollhouse; if(d){ const ceil=t3Mesh(new THREE.BoxGeometry(d.W-0.2,0.08,d.D-0.2),t3M("#FBF6EF",{r:1}),d.cx,2.75,d.cz); ceil.visible=false; ceil.castShadow=false; g.add(ceil); let was=false;
+    g.userData.anim.push(()=>{ const ins=!!T3.inHouse; ceil.visible=ins&&T3.C&&T3.C.position.y<2.7; }); }
+  return g; };
+const _cmR=carMesh; carMesh=function(col,id){ const g=_cmR(col,id); const c=CARS[id]||{}; if(c.bike) return g; let top=null, ty=-1; g.children.forEach(o=>{ if(o.isMesh&&o.geometry&&o.geometry.parameters&&o.geometry.type==="BoxGeometry"){ const y=o.position.y+(o.geometry.parameters.height||0)/2; if(y>ty&&o.position.y>0.6){ ty=y; top=o; } } }); if(top) top.visible=false;
+  const gl=new THREE.Mesh(new THREE.BoxGeometry(1.15,0.42,0.04),new THREE.MeshStandardMaterial?new THREE.MeshStandardMaterial({color:0xBFE3F2,transparent:true,opacity:0.45,roughness:0.05,metalness:0.2}):t3M(0xBFE3F2,{op:0.45})); gl.position.set(0,0.95,0.45); gl.rotation.x=-0.45; g.add(gl);
+  const fr=t3Mesh(new THREE.BoxGeometry(1.2,0.05,0.06),t3M("#2B2B2B",{r:0.4}),0,1.16,0.36); g.add(fr); return g; };
+
+/* gerçekçi saç dokusu: tel tel parlaklık */
+const _hairMatR=t3HairMat; t3HairMat=function(c){ const s=String(c||""); if(s.startsWith("grad:")||!THREE.CanvasTexture||!THREE.MeshStandardMaterial) return _hairMatR(c); const k="hairT"+s; if(T3.tex[k]) return T3.tex[k];
+  const cv=document.createElement("canvas"); cv.width=128; cv.height=256; const x=cv.getContext("2d"); x.fillStyle="#d8d8d8"; x.fillRect(0,0,128,256);
+  for(let i=0;i<260;i++){ const px=Math.random()*128, w=0.6+Math.random()*1.6, v=150+Math.floor(Math.random()*105); x.strokeStyle=`rgb(${v},${v},${v})`; x.lineWidth=w; x.beginPath(); x.moveTo(px,0); x.bezierCurveTo(px+(Math.random()-0.5)*8,80,px+(Math.random()-0.5)*8,170,px+(Math.random()-0.5)*6,256); x.stroke(); }
+  const gr=x.createLinearGradient(0,0,0,256); gr.addColorStop(0,"rgba(255,255,255,0)"); gr.addColorStop(0.32,"rgba(255,255,255,.35)"); gr.addColorStop(0.42,"rgba(255,255,255,0)"); x.fillStyle=gr; x.fillRect(0,0,128,256);
+  const t=new THREE.CanvasTexture(cv); t3Keep(t); let col; try{ col=t3Col(s); }catch(e){ col=s; }
+  const m=new THREE.MeshStandardMaterial({color:col,map:t,roughness:0.42,metalness:0.06}); T3.tex[k]=m; return m; };
+const _todayR=SCREENS.today; SCREENS.today=(...a)=>{ const r=_todayR(...a); const e=document.getElementById("toEvim"); if(e) e.remove(); return r; };
+/* ===================== GERÇEK EV: 2 kat + merdiven + balkon + çatı terası ===================== */
+function bTplGercek(){ const P=[], c1="#F7EFE6", wm="siva";
+  const W=(t,x,z,r,l,c,m)=>P.push({t,x,z,r,l,c:c||c1,m:m||wm});
+  const rect=(x0,x1,z0,z1,l,doorAt)=>{ for(let x=x0;x<=x1;x++){ W(x===doorAt?"door":(x%2?"window":"wall"),x,z0,0,l); W(x%2?"window":"wall",x,z1,2,l); } for(let z=z0;z<=z1;z++){ W(z%2?"window":"wall",x0,z,3,l); W(z%2?"window":"wall",x1,z,1,l); } };
+  const floor=(x0,x1,z0,z1,l,col,m,holes=[])=>{ for(let x=x0;x<=x1;x++) for(let z=z0;z<=z1;z++){ if(holes.some(h=>h[0]===x&&h[1]===z)) continue; P.push({t:"floor",x,z,l,r:0,c:col,m}); } };
+  const inner=(x,z0,z1,l,door)=>{ for(let z=z0;z<=z1;z++) W(z===door?"door":"wall",x,z,1,l,"#FFFFFF","siva"); };
+  const F=(t,x,z,r,l=0)=>P.push({t:"f:"+t,x,z,r,l});
+  /* ZEMİN KAT */
+  floor(-5,5,0,8,0,"#C9A27A","ahsap",[[-5,6],[-4,6],[-3,6],[-5,7],[-4,7],[-3,7],[-5,8],[-4,8],[-3,8]]);
+  floor(-5,-3,6,8,0,"#E8EEF2","fayans");
+  rect(-5,5,0,8,0,0);
+  inner(-1,0,4,0,2);
+  [-5,-3].forEach(x=>W("wall",x,6,0,0,"#FFFFFF","siva")); W("door",-4,6,0,0,"#FFFFFF","siva"); inner(-3,6,8,0,-99);
+  W("stairs",3,7,3,0,"#B08A66","ahsap");
+  F("kitchen",-4,1,0); F("table",-3,4,0); F("plant",-2,1,0); F("sofa",2,4,2); F("tv",2,1,0); F("armchair",4,3,3); F("lamp",5,1,0); F("bookshelf",0,7,2); F("bathtub",-4,8,2);
+  /* ÜST KAT + BALKON */
+  floor(-5,5,-2,8,1,"#B08A66","ahsap",[[2,7],[3,7],[4,7]]);
+  rect(-5,5,0,8,1,0);
+  for(let x=-5;x<=5;x++) W("rail",x,-2,0,1,"#FFFFFF","siva"); [-2,-1].forEach(z=>{ W("rail",-5,z,3,1,"#FFFFFF","siva"); W("rail",5,z,1,1,"#FFFFFF","siva"); });
+  [2,3,4].forEach(x=>W("rail",x,7,0,1,"#FFFFFF","siva")); W("rail",2,7,3,1,"#FFFFFF","siva");
+  inner(-1,0,8,1,4);
+  W("stairs",3,5,1,1,"#B08A66","ahsap");
+  F("bed",-3,6,2,1); F("wardrobe",-5,3,1,1); F("desk",-3,1,0,1); F("mirror",-2,8,2,1); F("plant",-1,7,0,1); F("armchair",3,1,0,1); F("bookshelf",5,2,3,1); F("lamp",1,2,0,1);
+  F("plant",-4,-1,0,1); F("chair",2,-1,0,1); F("plant",4,-1,0,1);
+  /* ÇATI TERASI */
+  floor(-5,5,0,8,2,"#D9CFC4","tas",[[2,5],[3,5],[4,5]]);
+  for(let x=-5;x<=5;x++){ W("rail",x,0,0,2,"#FFFFFF","siva"); W("rail",x,8,2,2,"#FFFFFF","siva"); } for(let z=0;z<=8;z++){ W("rail",-5,z,3,2,"#FFFFFF","siva"); W("rail",5,z,1,2,"#FFFFFF","siva"); }
+  [2,3,4].forEach(x=>{ W("rail",x,5,0,2,"#FFFFFF","siva"); W("rail",x,5,2,2,"#FFFFFF","siva"); }); W("rail",4,5,1,2,"#FFFFFF","siva");
+  F("lounger",-3,2,0,2); F("lounger",-1,2,0,2); F("table",-2,6,0,2); F("plant",-4,7,0,2); F("plant",4,7,0,2); F("plant",-4,1,0,2); F("plant",4,1,0,2); F("lamp",0,7,0,2);
+  /* ön bahçe */
+  for(let x=-5;x<=5;x++) if(Math.abs(x)>1) P.push({t:Math.abs(x)%3===0?"bush":"bed",x,z:-4,r:0});
+  for(let k=0;k<3;k++) P.push({t:"path",x:0,z:-1-k,r:0});
+  P.push({t:"blamp",x:-1,z:-3,r:0},{t:"blamp",x:1,z:-3,r:0});
+  return P; }
+const _bTplR=bTemplate; bTemplate=function(kind){ return kind==="gercek"?bTplGercek():_bTplR(kind); };
+/* 3 seviye: zemin (0), üst kat (3 m), teras (6 m) */
+bHeight=function(x,z,y){ const R=T3.room, B=R&&R.userData.build; if(!B) return null;
+  for(const s of B.stairs){ const base=(s.l||0)*3; if(y<base-0.7||y>base+3.7) continue; const d=[[0,1],[-1,0],[0,-1],[1,0]][s.r%4]; const dx=x-s.x, dz=z-s.z, a=dx*d[0]+dz*d[1], side=Math.abs(dx*d[1]-dz*d[0]); if(side<0.5&&a>-1.5&&a<1.5) return base+Math.max(0,Math.min(3,a+1.5)); }
+  const O=R.userData.buildO, cx=Math.round(x-O.x), cz=Math.round(z-O.z);
+  if(y>4.5&&B.upper.has(`${cx},${cz},2`)) return 6; if(y>1.5&&B.upper.has(`${cx},${cz},1`)) return 3; return 0; };
+t3Blocked=function(x,z,r){ const y=T3.av?T3.av.position.y:0, lv=y>4.5?2:y>1.5?1:0; const saved=T3.colliders; T3.colliders=(saved||[]).filter(c=>c.lvl==null?lv===0:c.lvl===lv); try{ return _blockedBuild(x,z,r); } finally{ T3.colliders=saved; } };
+const _roofFadeR=bRoofFade; bRoofFade=function(){ const R=T3.room, B=R&&R.userData.build; if(!B||!T3.av||T3.building) return _roofFadeR();
+  const O=R.userData.buildO, a=T3.av.position, cx=Math.round(a.x-O.x), cz=Math.round(a.z-O.z), lv=a.y>4.5?2:a.y>1.5?1:0, camY=T3.C?T3.C.position.y:99;
+  const inside=B.upper.has(`${cx},${cz},${lv+1}`)||(lv===1&&B.upper.has(`${cx},${cz},1`)&&B.upper.has(`${cx},${cz},2`)); const PS=bState().pieces;
+  B.items.forEach(h=>{ const p=PS[h.userData.pi]||{}, pl=p.l||0; if(!inside){ h.visible=true; return; } if(pl<=lv) h.visible=true; else if(pl===lv+1&&p.t==="floor") h.visible=camY<(lv+1)*3+0.2; else h.visible=false; });
+  B.roofs.forEach(h=>h.visible=!inside); };
+/* herkesin evi artık gerçek ev (kendi inşası olmayanlar için) */
+function ensureRealHouse(){ try{ const S=bState(), L=LOTS[myLot()]; if(window.__noRealHouse||state.realHouse||S.pieces.length||(L&&L.type==="empty")) return; S.pieces=bTemplate("gercek"); state.realHouse=1; save(); }catch(e){} }
+const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH2(); if(bState().pieces.length&&T3.myShell){ g.remove(T3.myShell); T3.myShell=null; } return g; };
 /* ===================== Renk temaları ===================== */
 const PALETTES={
  sakin:{n:"Sakin (önerilen)",e:"🌷",L:{bg:"#F7F3F1",surface:"#FFFFFF",ink:"#3B3436",muted:"#857A7D",line:"#ECE4E1",blue:"#9E6B76","blue-soft":"#F3E7E8",sky:"#8EA9B8",coral:"#D98C7A",sun:"#E3B66B",mint:"#7FA88A",lilac:"#A898C9","on-blue":"#FFFFFF",hero1:"#B58A92",hero2:"#93A894"},D:{bg:"#1E1B26",surface:"#2A2635",ink:"#ECE6F2",muted:"#A59FB3",line:"#3A3547",blue:"#B9A3E3","blue-soft":"#353047",sky:"#9DB8D6",coral:"#E7A894",sun:"#E8C98A",mint:"#8FCDB0",lilac:"#C9B8F0","on-blue":"#241F30",hero1:"#3E3656",hero2:"#5A4352"}},
