@@ -6163,7 +6163,7 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
 (function(){
   const mq=/[?&]modeltest=([a-z0-9]+)/i.exec(location.search); if(!mq) return;
   const CFGS={"1":{file:"UAL1_Standard.glb",H:1.83,clips:{idle:"Idle_Loop",walk:"Walk_Loop",jog:"Jog_Fwd_Loop",swim:"Swim_Fwd_Loop",swimIdle:"Swim_Idle_Loop",sit:"Sitting_Idle_Loop",drive:"Driving_Loop"},speeds:{walk:1.4,jog:3.2}},
-    "chibi":{file:"lezzet-chibi.glb",H:1.7,clips:{idle:"Idle_Breath",walk:"Walking",jog:"Running"},freezeIdle:{clip:"Walking",t:1.0},speeds:{walk:1.1,jog:2.6},fade:0.35,face:{skin:"#fcc4b8",lash:"#3b2622",eyes:[{c:[0.1371,1.3011,0.1827],w:0.1489,h:0.1163,side:1},{c:[-0.1379,1.2984,0.1706],w:0.1502,h:0.1109,side:-1}]}}};
+    "chibi":{file:"lezzet-chibi.glb",H:1.7,clips:{idle:"Idle_Breath",walk:"Walking",jog:"Running"},freezeIdle:{clip:"Walking",t:1.0},speeds:{walk:1.1,jog:2.6},fade:0.35,hair:{file:"lezzet-hair-wavy.glb",s:0.643,t:[0,1.242,-0.071]},face:{skin:"#fcc4b8",lash:"#3b2622",eyes:[{c:[0.1371,1.3011,0.1827],w:0.1489,h:0.1163,side:1},{c:[-0.1379,1.2984,0.1706],w:0.1502,h:0.1109,side:-1}]}}};
   const CFG=CFGS[mq[1].toLowerCase()]; if(!CFG) return;
   const MT={state:"loading",gltf:null,err:null}; window.__MT=MT;
   const CDN="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/";
@@ -6175,6 +6175,7 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
       if(!THREE.GLTFLoader) await loadScript(CDN+"loaders/GLTFLoader.js");
       if(!THREE.SkeletonUtils) await loadScript(CDN+"utils/SkeletonUtils.js");
       MT.gltf=await new Promise((res,rej)=>new THREE.GLTFLoader().load(CFG.file,res,undefined,rej));
+      if(CFG.hair){ try{ MT.hair=await new Promise((res,rej)=>new THREE.GLTFLoader().load(CFG.hair.file,res,undefined,rej)); }catch(e){ MT.hairErr="saç yüklenemedi"; } }
       MT.state="ready"; badge("🧪 Model testi: hazır"); attach();
     }catch(e){ MT.state="failed"; MT.err=String(e&&e.message||e); badge("🧪 Model yüklenemedi; eski karakter kullanılıyor"); try{ console.warn("modeltest",e); }catch(_){} } }
   /* göz kapağı yaması: yüzün kendi üçgenlerinden (saf fonksiyon, test edilebilir) */
@@ -6201,11 +6202,29 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
       const lid=new THREE.Mesh(geo,mat); lid.visible=false; lid.renderOrder=2; lid.frustumCulled=false; head.add(lid); lids.push({lid,cv,tex,f:0}); });
     m.face={lids,head,next:performance.now()+2000+Math.random()*2500,blink:null,draws:0,mv:null,mvNext:performance.now()+5000}; }
   function faceTick(m,now){ const F=m.face; if(!F||F.debug) return;
-    if(!F.blink&&now>=F.next){ F.blink={t0:now,dbl:Math.random()<0.15}; }
-    let f=0; if(F.blink){ const e=now-F.blink.t0, D=230; if(e<70) f=e/70; else if(e<110) f=1; else if(e<D) f=1-(e-110)/120; else { if(F.blink.dbl){ F.blink={t0:now+90,dbl:false}; } else { F.blink=null; F.next=now+2500+Math.random()*3500; } f=0; } }
+    const slow=/[?&]blinkslow=1/.test(location.search), K=slow?4:1;
+    if(!F.blink&&now>=F.next){ F.blink={t0:now,dbl:!slow&&Math.random()<0.15}; F.count=(F.count||0)+1; const b=document.getElementById("mtBadge"); if(b) b.textContent=b.textContent.replace(/ · kırpma: \d+/,"")+" · kırpma: "+F.count; }
+    let f=0; if(F.blink){ const e=(now-F.blink.t0)/K; if(e<0) f=0; else if(e<90) f=e/90; else if(e<160) f=1; else if(e<310) f=1-(e-160)/150; else { if(F.blink.dbl){ F.blink={t0:now+100,dbl:false}; } else { F.blink=null; F.next=now+(slow?1500:2000+Math.random()*2500); } f=0; } }
     F.lids.forEach(L=>{ const q=Math.round(f*12)/12; if(q!==L.f){ L.f=q; drawLid(L.cv,q,CFG.face); L.tex.needsUpdate=true; L.lid.visible=q>0.01; F.draws++; } });
     if(F.head){ if(!F.mv&&now>=F.mvNext&&m.curK==="idle"){ const tilt=Math.random()<0.5; F.mv={t0:now,dur:1700,ax:tilt?2:0,deg:(tilt?(Math.random()<0.5?-4:4):3)}; }
       if(F.mv){ const e=(now-F.mv.t0)/F.mv.dur; if(e>=1||m.curK!=="idle"){ F.mv=null; F.mvNext=now+6000+Math.random()*4000; } else { const a=Math.sin(e*Math.PI)*F.mv.deg*Math.PI/180, q=new THREE.Quaternion(), ax=new THREE.Vector3(F.mv.ax===0?1:0,0,F.mv.ax===2?1:0); q.setFromAxisAngle(ax,a); F.head.quaternion.multiply(q); } } } }
+  /* saç: kafa kemiğine bağlı ayrı model + ince ayar paneli */
+  function findMeshHead(model){ let mesh=null, head=null; model.traverse(o=>{ if(o.isSkinnedMesh&&!mesh) mesh=o; if(o.isBone&&/Head$/.test(o.name)&&!/Top/.test(o.name)&&!head) head=o; }); return {mesh,head}; }
+  function placeHair(m){ const H=m.hair; if(!H) return; const k=H.adj.k, t=CFG.hair.t, r=H.root;
+    r.position.set(t[0],t[1]+H.adj.dy,t[2]+H.adj.dz); r.quaternion.set(0,0,0,1); r.scale.setScalar(CFG.hair.s*k); r.updateMatrix();
+    const mw=new THREE.Matrix4().multiplyMatrices(H.meshBind,r.matrix), loc=new THREE.Matrix4().copy(H.headBindInv).multiply(mw); loc.decompose(r.position,r.quaternion,r.scale); }
+  function attachHair(model,m){ if(!CFG.hair||!MT.hair) return; const {mesh,head}=findMeshHead(model); if(!mesh||!head){ m.hairWhy="kafa bulunamadı"; return; }
+    model.updateMatrixWorld(true); const scene=MT.hair.scene.clone(true); scene.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.frustumCulled=false; } });
+    const root=new THREE.Group(); root.name="mtHair"; root.add(scene);
+    m.hair={root,adj:{k:1,dy:0,dz:0},meshBind:mesh.matrixWorld.clone(),headBindInv:new THREE.Matrix4().copy(head.matrixWorld).invert()}; placeHair(m); head.add(root); hairPanel(m); }
+  function hairPanel(m){ if(document.getElementById("mtHairBtn")) return; const btn=document.createElement("button"); btn.id="mtHairBtn"; btn.textContent="✂️ Saç ayarı"; btn.style.cssText="position:fixed;right:10px;top:calc(48px + env(safe-area-inset-top,0px));z-index:9999;background:rgba(59,52,54,.88);color:#fff;border:0;border-radius:12px;padding:7px 11px;font:600 13px system-ui,sans-serif"; document.body.appendChild(btn);
+    const p=document.createElement("div"); p.id="mtHairPanel"; p.style.cssText="display:none;position:fixed;right:10px;top:calc(86px + env(safe-area-inset-top,0px));z-index:9999;background:rgba(255,250,244,.96);color:#3B3436;border-radius:14px;padding:10px;font:600 13px system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.2);width:210px"; document.body.appendChild(p);
+    const row=(lab,a,b,k,d)=>`<div style="display:flex;align-items:center;gap:6px;margin:4px 0"><span style="flex:1">${lab}</span><button data-hk="${k}" data-hd="${-d}" style="min-width:40px;min-height:36px">${a}</button><button data-hk="${k}" data-hd="${d}" style="min-width:40px;min-height:36px">${b}</button></div>`;
+    const draw=()=>{ const H=m.hair, A=H?H.adj:{k:1,dy:0,dz:0}; p.innerHTML=row("Boyut","−","+","k",0.02)+row("Yükseklik","↓","↑","dy",0.01)+row("Öne / arkaya","◀","▶","dz",0.01)+`<button data-hv="1" style="width:100%;min-height:36px;margin-top:4px">${H&&H.root.visible?"Saçı gizle":"Saçı göster"}</button><div style="margin-top:6px;font-weight:500;font-size:12px">boyut ${A.k.toFixed(2)} · y ${A.dy.toFixed(2)} · z ${A.dz.toFixed(2)}</div>`; };
+    draw(); btn.onclick=()=>{ p.style.display=p.style.display==="none"?"block":"none"; };
+    p.addEventListener("click",e=>{ const b=e.target.closest("button"); const H=(T3.av&&T3.av.userData.mt&&T3.av.userData.mt.hair); if(!b||!H) return; if(b.dataset.hv){ H.root.visible=!H.root.visible; } else { H.adj[b.dataset.hk]=+(H.adj[b.dataset.hk]+ +b.dataset.hd).toFixed(3); placeHair(T3.av.userData.mt); } draw(); }); }
+  async function keepAwake(){ try{ if(navigator.wakeLock&&!(MT.wl&&!MT.wl.released)) MT.wl=await navigator.wakeLock.request("screen"); }catch(e){} }
+  document.addEventListener("click",keepAwake,{capture:true}); document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") keepAwake(); });
   function restore(av){ if(!av) return; av.children.forEach(c=>{ if(c.userData&&c.userData.mtHidden!==undefined){ c.visible=c.userData.mtHidden; delete c.userData.mtHidden; } }); }
   function attach(){ const av=(typeof T3!=="undefined")&&T3.av; if(MT.state!=="ready"||!av||av.userData.mt) return;
     try{
@@ -6218,8 +6237,8 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
       av.children.slice().forEach(c=>{ if(!c.isSprite){ c.userData.mtHidden=c.visible; c.visible=false; } });
       av.add(model);
       const m={model,mixer,acts,cur:null,curK:"",last:performance.now(),lx:av.position.x,lz:av.position.z,spd:0,s};
-      av.userData.mt=m; try{ setupFace(model,m); }catch(e){ m.faceErr=String(e&&e.message||e); } play(m,"idle",0);
-      const fs=CFG.face?(" · göz: "+(m.face?m.face.lids.length+"/2":"yok")+(m.faceErr?" · hata: "+m.faceErr.slice(0,60):"")+(m.faceWhy?" · "+m.faceWhy:"")):""; badge("🧪 Model testi: aktif"+fs+" · v3");
+      av.userData.mt=m; try{ setupFace(model,m); }catch(e){ m.faceErr=String(e&&e.message||e); } try{ attachHair(model,m); }catch(e){ m.hairWhy=String(e&&e.message||e).slice(0,50); } play(m,"idle",0);
+      const fs=CFG.face?(" · göz: "+(m.face?m.face.lids.length+"/2":"yok")+(m.faceErr?" · hata: "+m.faceErr.slice(0,60):"")+(m.faceWhy?" · "+m.faceWhy:"")):""; const hs=CFG.hair?(" · saç: "+(m.hair?"✓":(MT.hairErr||m.hairWhy||"yok"))):""; badge("🧪 Model testi: aktif"+fs+hs+" · v5");
       if(m.face&&/[?&]blinkdebug=1/.test(location.search)){ m.face.debug=true; m.face.lids.forEach(L=>{ drawLid(L.cv,0.7,{skin:"#ff2bd6",lash:"#1a00ff"}); L.tex.needsUpdate=true; L.lid.visible=true; L.f=-1; }); }
       const R=T3.room; if(R&&R.userData&&R.userData.anim) R.userData.anim.push(()=>tick(av));
     }catch(e){ MT.state="failed"; MT.err=String(e&&e.message||e); restore(av); badge("🧪 Model eklenemedi; eski karakter kullanılıyor"); } }
