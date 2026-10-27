@@ -6163,7 +6163,7 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
 (function(){
   const mq=/[?&]modeltest=([a-z0-9]+)/i.exec(location.search); if(!mq) return;
   const CFGS={"1":{file:"UAL1_Standard.glb",H:1.83,clips:{idle:"Idle_Loop",walk:"Walk_Loop",jog:"Jog_Fwd_Loop",swim:"Swim_Fwd_Loop",swimIdle:"Swim_Idle_Loop",sit:"Sitting_Idle_Loop",drive:"Driving_Loop"},speeds:{walk:1.4,jog:3.2}},
-    "chibi":{file:"lezzet-chibi.glb",H:1.7,clips:{idle:"Idle_Breath",walk:"Walking",jog:"Running"},freezeIdle:{clip:"Walking",t:1.0},speeds:{walk:1.1,jog:2.6},fade:0.35}};
+    "chibi":{file:"lezzet-chibi.glb",H:1.7,clips:{idle:"Idle_Breath",walk:"Walking",jog:"Running"},freezeIdle:{clip:"Walking",t:1.0},speeds:{walk:1.1,jog:2.6},fade:0.35,face:{skin:"#fcc4b8",lash:"#3b2622",eyes:[{c:[0.1371,1.3011,0.1827],w:0.1489,h:0.1163,side:1},{c:[-0.1379,1.2984,0.1706],w:0.1502,h:0.1109,side:-1}]}}};
   const CFG=CFGS[mq[1].toLowerCase()]; if(!CFG) return;
   const MT={state:"loading",gltf:null,err:null}; window.__MT=MT;
   const CDN="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/";
@@ -6177,6 +6177,35 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
       MT.gltf=await new Promise((res,rej)=>new THREE.GLTFLoader().load(CFG.file,res,undefined,rej));
       MT.state="ready"; badge("🧪 Model testi: hazır"); attach();
     }catch(e){ MT.state="failed"; MT.err=String(e&&e.message||e); badge("🧪 Model yüklenemedi; eski karakter kullanılıyor"); try{ console.warn("modeltest",e); }catch(_){} } }
+  /* göz kapağı yaması: yüzün kendi üçgenlerinden (saf fonksiyon, test edilebilir) */
+  function buildEyePatch(pos,nrm,idx,eye,k){ k=k||0.62; const rx=eye.w*k, ry=eye.h*k, inE=i=>{ const x=pos[i*3],y=pos[i*3+1],z=pos[i*3+2]; if(z<0.08||Math.sign(x)!==eye.side) return false; const dx=(x-eye.c[0])/rx, dy=(y-eye.c[1])/ry; return dx*dx+dy*dy<=1; };
+    const map=new Map(), P=[], U=[], I=[]; const add=i=>{ if(map.has(i)) return map.get(i); const o=0.004, x=pos[i*3]+nrm[i*3]*o, y=pos[i*3+1]+nrm[i*3+1]*o, z=pos[i*3+2]+nrm[i*3+2]*o; P.push(x,y,z); U.push((pos[i*3]-eye.c[0])/(eye.w*1.24)+0.5,(pos[i*3+1]-eye.c[1])/(eye.h*1.24)+0.5); map.set(i,P.length/3-1); return P.length/3-1; };
+    const n=idx?idx.length:pos.length/3; for(let t=0;t<n;t+=3){ const a=idx?idx[t]:t, b=idx?idx[t+1]:t+1, c=idx?idx[t+2]:t+2; if(inE(a)&&inE(b)&&inE(c)) I.push(add(a),add(b),add(c)); }
+    return {positions:P,uvs:U,indices:I}; }
+  MT.buildEyePatch=buildEyePatch;
+  function drawLid(cv,f,F){ const x=cv.getContext("2d"), S=cv.width; x.clearRect(0,0,S,S); if(f<=0.01) return; const cx=S/2, cy=S/2, rx=S*0.43, ry=S*0.43;
+    x.save(); x.beginPath(); x.ellipse(cx,cy,rx,ry,0,0,Math.PI*2); x.clip(); const top=cy-ry-2, edge=top+f*(2*ry+4);
+    const g=x.createLinearGradient(0,top,0,edge); g.addColorStop(0,F.skin); g.addColorStop(1,shadeHex(F.skin,-10)); x.fillStyle=g; x.fillRect(0,top,S,edge-top);
+    x.restore(); x.strokeStyle=F.lash; x.lineCap="round"; x.lineWidth=S*0.05; x.beginPath(); const w=rx*(0.55+0.45*Math.sqrt(Math.max(0,1-Math.pow((edge-cy)/ry,2))));
+    x.moveTo(cx-w,edge-S*0.01); x.quadraticCurveTo(cx,edge+S*0.05*f,cx+w,edge-S*0.01); x.stroke(); }
+  function shadeHex(h,p){ const n=parseInt(h.slice(1),16); const c=v=>Math.max(0,Math.min(255,Math.round(v*(1+p/100)))); return "#"+[n>>16,(n>>8)&255,n&255].map(c).map(v=>v.toString(16).padStart(2,"0")).join(""); }
+  function setupFace(model,m){ const F=CFG.face; if(!F) return; let mesh=null, head=null;
+    model.traverse(o=>{ if(o.isSkinnedMesh&&!mesh) mesh=o; if(o.isBone&&/Head$/.test(o.name)&&!/Top/.test(o.name)&&!head) head=o; });
+    if(!mesh||!head||!mesh.geometry||!mesh.geometry.attributes.position) return;
+    model.updateMatrixWorld(true); const ga=mesh.geometry.attributes, pos=ga.position.array, nrm=ga.normal.array, idx=mesh.geometry.index?mesh.geometry.index.array:null;
+    const lids=[]; F.eyes.forEach(eye=>{ const P=buildEyePatch(pos,nrm,idx,eye); if(P.indices.length<3) return;
+      const v=new THREE.Vector3(), out=[]; for(let i=0;i<P.positions.length;i+=3){ v.set(P.positions[i],P.positions[i+1],P.positions[i+2]); mesh.localToWorld(v); head.worldToLocal(v); out.push(v.x,v.y,v.z); }
+      const geo=new THREE.BufferGeometry(); geo.setAttribute("position",new THREE.Float32BufferAttribute(out,3)); geo.setAttribute("uv",new THREE.Float32BufferAttribute(P.uvs,2)); geo.setIndex(P.indices); geo.computeVertexNormals();
+      const cv=document.createElement("canvas"); cv.width=cv.height=128; const tex=new THREE.CanvasTexture(cv); if(THREE.sRGBEncoding!==undefined) tex.encoding=THREE.sRGBEncoding;
+      const mat=new THREE.MeshStandardMaterial({map:tex,transparent:true,depthWrite:false,roughness:0.85,metalness:0,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
+      const lid=new THREE.Mesh(geo,mat); lid.visible=false; lid.renderOrder=2; lid.frustumCulled=false; head.add(lid); lids.push({lid,cv,tex,f:0}); });
+    m.face={lids,head,next:performance.now()+2000+Math.random()*2500,blink:null,draws:0,mv:null,mvNext:performance.now()+5000}; }
+  function faceTick(m,now){ const F=m.face; if(!F) return;
+    if(!F.blink&&now>=F.next){ F.blink={t0:now,dbl:Math.random()<0.15}; }
+    let f=0; if(F.blink){ const e=now-F.blink.t0, D=230; if(e<70) f=e/70; else if(e<110) f=1; else if(e<D) f=1-(e-110)/120; else { if(F.blink.dbl){ F.blink={t0:now+90,dbl:false}; } else { F.blink=null; F.next=now+2500+Math.random()*3500; } f=0; } }
+    F.lids.forEach(L=>{ const q=Math.round(f*12)/12; if(q!==L.f){ L.f=q; drawLid(L.cv,q,CFG.face); L.tex.needsUpdate=true; L.lid.visible=q>0.01; F.draws++; } });
+    if(F.head){ if(!F.mv&&now>=F.mvNext&&m.curK==="idle"){ const tilt=Math.random()<0.5; F.mv={t0:now,dur:1700,ax:tilt?2:0,deg:(tilt?(Math.random()<0.5?-4:4):3)}; }
+      if(F.mv){ const e=(now-F.mv.t0)/F.mv.dur; if(e>=1||m.curK!=="idle"){ F.mv=null; F.mvNext=now+6000+Math.random()*4000; } else { const a=Math.sin(e*Math.PI)*F.mv.deg*Math.PI/180, q=new THREE.Quaternion(), ax=new THREE.Vector3(F.mv.ax===0?1:0,0,F.mv.ax===2?1:0); q.setFromAxisAngle(ax,a); F.head.quaternion.multiply(q); } } } }
   function restore(av){ if(!av) return; av.children.forEach(c=>{ if(c.userData&&c.userData.mtHidden!==undefined){ c.visible=c.userData.mtHidden; delete c.userData.mtHidden; } }); }
   function attach(){ const av=(typeof T3!=="undefined")&&T3.av; if(MT.state!=="ready"||!av||av.userData.mt) return;
     try{
@@ -6189,7 +6218,7 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
       av.children.slice().forEach(c=>{ if(!c.isSprite){ c.userData.mtHidden=c.visible; c.visible=false; } });
       av.add(model);
       const m={model,mixer,acts,cur:null,curK:"",last:performance.now(),lx:av.position.x,lz:av.position.z,spd:0,s};
-      av.userData.mt=m; play(m,"idle",0); badge("🧪 Model testi: aktif");
+      av.userData.mt=m; try{ setupFace(model,m); }catch(e){ m.faceErr=String(e&&e.message||e); } play(m,"idle",0); badge("🧪 Model testi: aktif");
       const R=T3.room; if(R&&R.userData&&R.userData.anim) R.userData.anim.push(()=>tick(av));
     }catch(e){ MT.state="failed"; MT.err=String(e&&e.message||e); restore(av); badge("🧪 Model eklenemedi; eski karakter kullanılıyor"); } }
   function play(m,k,fade){ const a=m.acts[k]||m.acts.idle; if(m.cur===a) return; a.reset(); if(a.userData&&a.userData.freeze!=null) a.time=a.userData.freeze; a.enabled=true; a.setEffectiveTimeScale(1); a.setEffectiveWeight(1); a.play(); if(m.cur) m.cur.crossFadeTo(a,fade==null?(CFG.fade||0.25):fade,false); m.cur=a; m.curK=k; }
@@ -6201,7 +6230,7 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
     play(m,k);
     const base=CFG.speeds[m.curK]; m.cur.timeScale=(m.cur.userData&&m.cur.userData.freeze!=null)?0:(base?Math.max(0.6,Math.min(1.8,m.spd/(base*m.s))):1);
     av.children.forEach(c=>{ if(c!==m.model&&!c.isSprite&&c.visible){ c.userData.mtHidden=true; c.visible=false; } });
-    m.mixer.update(dt); }
+    m.mixer.update(dt); try{ faceTick(m,now); }catch(e){ m.faceErr=String(e&&e.message||e); } }
   const _hydMT=t3Hydrate; t3Hydrate=function(...a){ const r=_hydMT.apply(this,a); try{ attach(); }catch(e){} return r; };
   setInterval(()=>{ try{ attach(); }catch(e){} },1000);
   if(document.readyState==="complete") setTimeout(start,300); else window.addEventListener("load",()=>setTimeout(start,300));
