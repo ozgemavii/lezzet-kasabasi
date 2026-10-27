@@ -6191,7 +6191,7 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
   function shadeHex(h,p){ const n=parseInt(h.slice(1),16); const c=v=>Math.max(0,Math.min(255,Math.round(v*(1+p/100)))); return "#"+[n>>16,(n>>8)&255,n&255].map(c).map(v=>v.toString(16).padStart(2,"0")).join(""); }
   function setupFace(model,m){ const F=CFG.face; if(!F) return; let mesh=null, head=null;
     model.traverse(o=>{ if(o.isSkinnedMesh&&!mesh) mesh=o; if(o.isBone&&/Head$/.test(o.name)&&!/Top/.test(o.name)&&!head) head=o; });
-    if(!mesh||!head||!mesh.geometry||!mesh.geometry.attributes.position) return;
+    if(!mesh||!head||!mesh.geometry||!mesh.geometry.attributes.position){ m.faceWhy=!mesh?"mesh yok":!head?"kafa kemiği yok":"geometri yok"; return; }
     model.updateMatrixWorld(true); const ga=mesh.geometry.attributes, pos=ga.position.array, nrm=ga.normal.array, idx=mesh.geometry.index?mesh.geometry.index.array:null;
     const lids=[]; F.eyes.forEach(eye=>{ const P=buildEyePatch(pos,nrm,idx,eye); if(P.indices.length<3) return;
       const v=new THREE.Vector3(), out=[]; for(let i=0;i<P.positions.length;i+=3){ v.set(P.positions[i],P.positions[i+1],P.positions[i+2]); mesh.localToWorld(v); head.worldToLocal(v); out.push(v.x,v.y,v.z); }
@@ -6200,7 +6200,7 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
       const mat=new THREE.MeshStandardMaterial({map:tex,transparent:true,depthWrite:false,roughness:0.85,metalness:0,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
       const lid=new THREE.Mesh(geo,mat); lid.visible=false; lid.renderOrder=2; lid.frustumCulled=false; head.add(lid); lids.push({lid,cv,tex,f:0}); });
     m.face={lids,head,next:performance.now()+2000+Math.random()*2500,blink:null,draws:0,mv:null,mvNext:performance.now()+5000}; }
-  function faceTick(m,now){ const F=m.face; if(!F) return;
+  function faceTick(m,now){ const F=m.face; if(!F||F.debug) return;
     if(!F.blink&&now>=F.next){ F.blink={t0:now,dbl:Math.random()<0.15}; }
     let f=0; if(F.blink){ const e=now-F.blink.t0, D=230; if(e<70) f=e/70; else if(e<110) f=1; else if(e<D) f=1-(e-110)/120; else { if(F.blink.dbl){ F.blink={t0:now+90,dbl:false}; } else { F.blink=null; F.next=now+2500+Math.random()*3500; } f=0; } }
     F.lids.forEach(L=>{ const q=Math.round(f*12)/12; if(q!==L.f){ L.f=q; drawLid(L.cv,q,CFG.face); L.tex.needsUpdate=true; L.lid.visible=q>0.01; F.draws++; } });
@@ -6218,7 +6218,9 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
       av.children.slice().forEach(c=>{ if(!c.isSprite){ c.userData.mtHidden=c.visible; c.visible=false; } });
       av.add(model);
       const m={model,mixer,acts,cur:null,curK:"",last:performance.now(),lx:av.position.x,lz:av.position.z,spd:0,s};
-      av.userData.mt=m; try{ setupFace(model,m); }catch(e){ m.faceErr=String(e&&e.message||e); } play(m,"idle",0); badge("🧪 Model testi: aktif");
+      av.userData.mt=m; try{ setupFace(model,m); }catch(e){ m.faceErr=String(e&&e.message||e); } play(m,"idle",0);
+      const fs=CFG.face?(" · göz: "+(m.face?m.face.lids.length+"/2":"yok")+(m.faceErr?" · hata: "+m.faceErr.slice(0,60):"")+(m.faceWhy?" · "+m.faceWhy:"")):""; badge("🧪 Model testi: aktif"+fs+" · v3");
+      if(m.face&&/[?&]blinkdebug=1/.test(location.search)){ m.face.debug=true; m.face.lids.forEach(L=>{ drawLid(L.cv,0.7,{skin:"#ff2bd6",lash:"#1a00ff"}); L.tex.needsUpdate=true; L.lid.visible=true; L.f=-1; }); }
       const R=T3.room; if(R&&R.userData&&R.userData.anim) R.userData.anim.push(()=>tick(av));
     }catch(e){ MT.state="failed"; MT.err=String(e&&e.message||e); restore(av); badge("🧪 Model eklenemedi; eski karakter kullanılıyor"); } }
   function play(m,k,fade){ const a=m.acts[k]||m.acts.idle; if(m.cur===a) return; a.reset(); if(a.userData&&a.userData.freeze!=null) a.time=a.userData.freeze; a.enabled=true; a.setEffectiveTimeScale(1); a.setEffectiveWeight(1); a.play(); if(m.cur) m.cur.crossFadeTo(a,fade==null?(CFG.fade||0.25):fade,false); m.cur=a; m.curK=k; }
