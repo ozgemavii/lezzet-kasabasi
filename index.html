@@ -6226,9 +6226,13 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
     draw(); btn.onclick=()=>{ p.style.display=p.style.display==="none"?"block":"none"; };
     p.addEventListener("click",e=>{ const b=e.target.closest("button"); const H=(T3.av&&T3.av.userData.mt&&T3.av.userData.mt.hair); if(!b||!H) return; if(b.dataset.hv){ H.root.visible=!H.root.visible; } else { H.adj[b.dataset.hk]=+(H.adj[b.dataset.hk]+ +b.dataset.hd).toFixed(3); placeHair(T3.av.userData.mt); } draw(); }); }
   /* kıyafet: karakterin kendi iskeletine bağlanır (modüler) */
-  function skinTex(url){ MT.skinTex=MT.skinTex||{}; if(!MT.skinTex[url]){ const t=new THREE.TextureLoader().load(url); t.flipY=false; if(THREE.sRGBEncoding!==undefined) t.encoding=THREE.sRGBEncoding; MT.skinTex[url]=t; } return MT.skinTex[url]; }
+  function skinTex(url,done){ MT.skinTex=MT.skinTex||{}; MT.skinSt=MT.skinSt||{}; const t0=MT.skinTex[url]; if(t0){ if(MT.skinSt[url]==="ok") done(t0); return; }
+    MT.skinSt[url]="loading"; new THREE.TextureLoader().load(url,t=>{ t.flipY=false; if(THREE.sRGBEncoding!==undefined) t.encoding=THREE.sRGBEncoding; t.needsUpdate=true; MT.skinTex[url]=t; MT.skinSt[url]="ok"; skinBadge("✓"); done(t); },undefined,()=>{ MT.skinSt[url]="err"; skinBadge("yüklenemedi"); }); }
+  function skinBadge(v){ const b=document.getElementById("mtBadge"); if(b) b.textContent=b.textContent.replace(/ · ten: [^·]+/,"")+" · ten: "+v; }
   function wearOutfit(m,key){ const {mesh}=findMeshHead(m.model); if(!mesh) return;
-    try{ const mat=mesh.material; if(mat){ if(!m.baseMap) m.baseMap=mat.map; const sk=key&&CFG.outfits[key]&&CFG.outfits[key].skin; const want=sk?skinTex(sk):m.baseMap; if(want&&mat.map!==want){ mat.map=want; mat.needsUpdate=true; } } }catch(e){} if(m.outfit&&m.outfit.mesh){ m.outfit.mesh.parent&&m.outfit.mesh.parent.remove(m.outfit.mesh); } m.outfit={key:null,mesh:null};
+    try{ const mat=mesh.material; if(mat){ if(!m.baseMap) m.baseMap=mat.map; const sk=key&&CFG.outfits[key]&&CFG.outfits[key].skin;
+      if(mat.map!==m.baseMap){ mat.map=m.baseMap; mat.needsUpdate=true; }
+      if(sk) skinTex(sk,t=>{ if(m.outfit&&m.outfit.key===key&&t&&t.image){ mat.map=t; mat.needsUpdate=true; } }); } }catch(e){} if(m.outfit&&m.outfit.mesh){ m.outfit.mesh.parent&&m.outfit.mesh.parent.remove(m.outfit.mesh); } m.outfit={key:null,mesh:null};
     const g=key&&MT.outfits&&MT.outfits[key]; if(!g) return; let src=null; g.scene.traverse(o=>{ if(o.isSkinnedMesh&&!src) src=o; }); if(!src){ m.outfitWhy="kıyafet ağı yok"; return; }
     const om=new THREE.SkinnedMesh(src.geometry,src.material); om.name="mtOutfit"; om.position.copy(mesh.position); om.quaternion.copy(mesh.quaternion); om.scale.copy(mesh.scale);
     om.bind(mesh.skeleton,mesh.bindMatrix); om.castShadow=true; om.frustumCulled=false; mesh.parent.add(om); m.outfit={key,mesh:om}; }
@@ -6250,7 +6254,7 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
       av.add(model);
       const m={model,mixer,acts,cur:null,curK:"",last:performance.now(),lx:av.position.x,lz:av.position.z,spd:0,s};
       av.userData.mt=m; try{ setupFace(model,m); }catch(e){ m.faceErr=String(e&&e.message||e); } try{ attachHair(model,m); }catch(e){ m.hairWhy=String(e&&e.message||e).slice(0,50); } try{ const ok0=Object.keys(MT.outfits||{}); wearOutfit(m,MT.outfitKey!==undefined?MT.outfitKey:(ok0[0]||null)); outfitButton(m); }catch(e){ m.outfitWhy=String(e&&e.message||e).slice(0,50); } play(m,"idle",0);
-      const fs=CFG.face?(" · göz: "+(m.face?m.face.lids.length+"/2":"yok")+(m.faceErr?" · hata: "+m.faceErr.slice(0,60):"")+(m.faceWhy?" · "+m.faceWhy:"")):""; const hs=CFG.hair?(" · saç: "+(m.hair?"✓":(MT.hairErr||m.hairWhy||"yok"))):""; const os=CFG.outfits?(" · kıyafet: "+(m.outfit&&m.outfit.key?"✓":(MT.outfitErr||m.outfitWhy||"yok"))):""; badge("🧪 Model testi: aktif"+fs+hs+os+" · v11");
+      const fs=CFG.face?(" · göz: "+(m.face?m.face.lids.length+"/2":"yok")+(m.faceErr?" · hata: "+m.faceErr.slice(0,60):"")+(m.faceWhy?" · "+m.faceWhy:"")):""; const hs=CFG.hair?(" · saç: "+(m.hair?"✓":(MT.hairErr||m.hairWhy||"yok"))):""; const os=CFG.outfits?(" · kıyafet: "+(m.outfit&&m.outfit.key?"✓":(MT.outfitErr||m.outfitWhy||"yok"))):""; badge("🧪 Model testi: aktif"+fs+hs+os+" · v12");
       if(m.face&&/[?&]blinkdebug=1/.test(location.search)){ m.face.debug=true; m.face.lids.forEach(L=>{ drawLid(L.cv,0.7,{skin:"#ff2bd6",lash:"#1a00ff"}); L.tex.needsUpdate=true; L.lid.visible=true; L.f=-1; }); }
       const R=T3.room; if(R&&R.userData&&R.userData.anim) R.userData.anim.push(()=>tick(av));
     }catch(e){ MT.state="failed"; MT.err=String(e&&e.message||e); restore(av); badge("🧪 Model eklenemedi; eski karakter kullanılıyor"); } }
