@@ -6165,7 +6165,13 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
   const mq=/[?&]modeltest=([a-z0-9]+)/i.exec(location.search); if(!mq) return;
   const CFGS={"1":{file:"UAL1_Standard.glb",H:1.83,clips:{idle:"Idle_Loop",walk:"Walk_Loop",jog:"Jog_Fwd_Loop",swim:"Swim_Fwd_Loop",swimIdle:"Swim_Idle_Loop",sit:"Sitting_Idle_Loop",drive:"Driving_Loop"},speeds:{walk:1.4,jog:3.2}},
     "chibi":{file:"lezzet-chibi.glb",H:1.7,clips:{idle:"Idle_Breath",walk:"Walking",jog:"Running"},freezeIdle:{clip:"Walking",t:1.0},speeds:{walk:1.1,jog:2.6},fade:0.35,outfits:{princess:{file:"lezzet-outfit-princess.glb",ad:"Prenses elbise",skin:"lezzet-chibi-ten.jpg",bfly:[0,0.712,0.188]},butterfly:{file:"lezzet-outfit-butterfly.glb",ad:"Kelebek elbise",skin:"lezzet-chibi-ten.jpg"}},hair:{file:"lezzet-hair-wavy.glb",s:0.643,t:[0,1.242,-0.071]},face:{skin:"#fcc4b8",lash:"#3b2622",eyes:[{c:[0.1371,1.3011,0.1827],w:0.1489,h:0.1163,side:1},{c:[-0.1379,1.2984,0.1706],w:0.1502,h:0.1109,side:-1}]}}};
+  CFGS.karakter={file:"lezzet-karakter.glb",H:1.12,clips:{idle:"Idle_Breath",walk:"Walking",jog:"Running"},speeds:{walk:.75,jog:1.75},fade:.3,morphBlink:"Fcl_EYE_Close",splash:"acilis.jpg"};
   const CFG=CFGS[mq[1].toLowerCase()]; if(!CFG) return;
+  if(CFG.splash) (function(){ const d=document.createElement("div"); d.id="lkSplash"; d.style.cssText="position:fixed;inset:0;z-index:100000;background:#9fd0f5;overflow:hidden;transition:opacity .6s";
+    const im=new Image(); im.src=CFG.splash; im.alt=""; im.style.cssText="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);min-width:100%;min-height:100%;object-fit:cover;width:100%;height:100%";
+    const tr=document.createElement("div"), fl=document.createElement("div"); tr.style.cssText="position:absolute;height:14px;border-radius:9px;background:#f3eef0;box-shadow:inset 0 1px 3px #0003"; fl.style.cssText="height:100%;width:0;border-radius:9px;background:linear-gradient(90deg,#f7a8c4,#f48fb1);transition:width .25s"; tr.appendChild(fl); d.append(im,tr); document.body.appendChild(d);
+    const place=()=>{ const W=innerWidth,H=innerHeight,iw=im.naturalWidth||900,ih=im.naturalHeight||1950,sc=Math.max(W/iw,H/ih),ox=(W-iw*sc)/2,oy=(H-ih*sc)/2; tr.style.left=(ox+iw*sc*.264)+"px"; tr.style.width=(iw*sc*.473)+"px"; tr.style.top=(oy+ih*sc*.833-7)+"px"; };
+    im.onload=place; addEventListener("resize",place); place(); let p=0; const iv=setInterval(()=>{ p=Math.min(100,p+4+Math.random()*6); fl.style.width=p+"%"; if(p>=100){ clearInterval(iv); setTimeout(()=>{ d.style.opacity="0"; setTimeout(()=>d.remove(),650); },350); } },120); })();
   const MT={state:"loading",gltf:null,err:null}; window.__MT=MT;
   const CDN="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/";
   const loadScript=src=>new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src; s.onload=res; s.onerror=()=>rej(new Error("Yüklenemedi: "+src)); document.head.appendChild(s); });
@@ -6192,7 +6198,9 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
     x.restore(); x.strokeStyle=F.lash; x.lineCap="round"; x.lineWidth=S*0.05; x.beginPath(); const w=rx*(0.55+0.45*Math.sqrt(Math.max(0,1-Math.pow((edge-cy)/ry,2))));
     x.moveTo(cx-w,edge-S*0.01); x.quadraticCurveTo(cx,edge+S*0.05*f,cx+w,edge-S*0.01); x.stroke(); }
   function shadeHex(h,p){ const n=parseInt(h.slice(1),16); const c=v=>Math.max(0,Math.min(255,Math.round(v*(1+p/100)))); return "#"+[n>>16,(n>>8)&255,n&255].map(c).map(v=>v.toString(16).padStart(2,"0")).join(""); }
-  function setupFace(model,m){ const F=CFG.face; if(!F) return; let mesh=null, head=null;
+  function setupFace(model,m){ if(CFG.morphBlink){ const L=[]; model.traverse(o=>{ if(o.morphTargetDictionary&&o.morphTargetInfluences){ const k=Object.keys(o.morphTargetDictionary).find(n=>n.endsWith(CFG.morphBlink)); if(k!==undefined) L.push([o,o.morphTargetDictionary[k]]); } });
+      m.face={lids:[],morph:L,head:null,next:performance.now()+2000,blink:null,draws:0,mv:null,mvNext:performance.now()+5000}; if(!L.length) m.faceWhy="ifade yok"; return; }
+    const F=CFG.face; if(!F) return; let mesh=null, head=null;
     model.traverse(o=>{ if(o.isSkinnedMesh&&!mesh) mesh=o; if(o.isBone&&/Head$/.test(o.name)&&!/Top/.test(o.name)&&!head) head=o; });
     if(!mesh||!head||!mesh.geometry||!mesh.geometry.attributes.position){ m.faceWhy=!mesh?"mesh yok":!head?"kafa kemiği yok":"geometri yok"; return; }
     model.updateMatrixWorld(true); const ga=mesh.geometry.attributes, pos=ga.position.array, nrm=ga.normal.array, idx=mesh.geometry.index?mesh.geometry.index.array:null;
@@ -6207,6 +6215,7 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
     const slow=/[?&]blinkslow=1/.test(location.search), K=slow?4:1;
     if(!F.blink&&now>=F.next){ F.blink={t0:now,dbl:!slow&&Math.random()<0.15}; F.count=(F.count||0)+1; const b=document.getElementById("mtBadge"); if(b) b.textContent=b.textContent.replace(/ · kırpma: \d+/,"")+" · kırpma: "+F.count; }
     let f=0; if(F.blink){ const e=(now-F.blink.t0)/K; if(e<0) f=0; else if(e<90) f=e/90; else if(e<160) f=1; else if(e<310) f=1-(e-160)/150; else { if(F.blink.dbl){ F.blink={t0:now+100,dbl:false}; } else { F.blink=null; F.next=now+(slow?1500:2000+Math.random()*2500); } f=0; } }
+    if(F.morph) F.morph.forEach(([o,i])=>{ o.morphTargetInfluences[i]=f; });
     F.lids.forEach(L=>{ const q=Math.round(f*12)/12; if(q!==L.f){ L.f=q; drawLid(L.cv,q,CFG.face); L.tex.needsUpdate=true; L.lid.visible=q>0.01; F.draws++; } });
     if(F.head){ if(!F.mv&&now>=F.mvNext&&m.curK==="idle"){ const tilt=Math.random()<0.5; F.mv={t0:now,dur:1700,ax:tilt?2:0,deg:(tilt?(Math.random()<0.5?-4:4):3)}; }
       if(F.mv){ const e=(now-F.mv.t0)/F.mv.dur; if(e>=1||m.curK!=="idle"){ F.mv=null; F.mvNext=now+6000+Math.random()*4000; } else { const a=Math.sin(e*Math.PI)*F.mv.deg*Math.PI/180, q=new THREE.Quaternion(), ax=new THREE.Vector3(F.mv.ax===0?1:0,0,F.mv.ax===2?1:0); q.setFromAxisAngle(ax,a); F.head.quaternion.multiply(q); } } } }
@@ -6262,7 +6271,7 @@ const _btH2=t3BuildTown; t3BuildTown=function(){ ensureRealHouse(); const g=_btH
       av.add(model);
       const m={model,mixer,acts,cur:null,curK:"",last:performance.now(),lx:av.position.x,lz:av.position.z,spd:0,s};
       av.userData.mt=m; try{ setupFace(model,m); }catch(e){ m.faceErr=String(e&&e.message||e); } try{ attachHair(model,m); }catch(e){ m.hairWhy=String(e&&e.message||e).slice(0,50); } try{ const ok0=Object.keys(MT.outfits||{}); wearOutfit(m,MT.outfitKey!==undefined?MT.outfitKey:(ok0[0]||null)); outfitButton(m); }catch(e){ m.outfitWhy=String(e&&e.message||e).slice(0,50); } play(m,"idle",0);
-      const fs=CFG.face?(" · göz: "+(m.face?m.face.lids.length+"/2":"yok")+(m.faceErr?" · hata: "+m.faceErr.slice(0,60):"")+(m.faceWhy?" · "+m.faceWhy:"")):""; const hs=CFG.hair?(" · saç: "+(m.hair?"✓":(MT.hairErr||m.hairWhy||"yok"))):""; const os=CFG.outfits?(" · kıyafet: "+(m.outfit&&m.outfit.key?"✓":(MT.outfitErr||m.outfitWhy||"yok"))):""; badge("🧪 Model testi: aktif"+fs+hs+os+" · v13");
+      const fs=CFG.morphBlink?(" · göz: "+(m.face&&m.face.morph&&m.face.morph.length?"✓":"yok")):CFG.face?(" · göz: "+(m.face?m.face.lids.length+"/2":"yok")+(m.faceErr?" · hata: "+m.faceErr.slice(0,60):"")+(m.faceWhy?" · "+m.faceWhy:"")):""; const hs=CFG.hair?(" · saç: "+(m.hair?"✓":(MT.hairErr||m.hairWhy||"yok"))):""; const os=CFG.outfits?(" · kıyafet: "+(m.outfit&&m.outfit.key?"✓":(MT.outfitErr||m.outfitWhy||"yok"))):""; badge("🧪 Model testi: aktif"+fs+hs+os+" · v14");
       if(m.face&&/[?&]blinkdebug=1/.test(location.search)){ m.face.debug=true; m.face.lids.forEach(L=>{ drawLid(L.cv,0.7,{skin:"#ff2bd6",lash:"#1a00ff"}); L.tex.needsUpdate=true; L.lid.visible=true; L.f=-1; }); }
       const R=T3.room; if(R&&R.userData&&R.userData.anim) R.userData.anim.push(()=>tick(av));
     }catch(e){ MT.state="failed"; MT.err=String(e&&e.message||e); restore(av); badge("🧪 Model eklenemedi; eski karakter kullanılıyor"); } }
